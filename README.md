@@ -9,16 +9,18 @@ For further licensing information, please visit.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 ## Installation
-- Copy get.sh and getrel.sh into a directory.
-- Make a writable subdirectory called "sites".
-
-## Script prerequisites
+### Script prerequisites
 - bash, tee, cut, grep, cat, md5sum, date
 - wget
 - perl
 - RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
+
+### Mirror from Github
+- Have get.sh and getrel.sh mirrored into an empty directory.
+- Make a writable subdirectory called "sites".
+
  
-## Change in runtime requirements
+### Change in runtime requirements
 You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to.
 50% or more. By default, 10% of physical memory is used by the runtime temporary directory.
 This may or may not be enough for Warnick to create its temporary log files.
