@@ -1,7 +1,7 @@
 # WARNICK v1.2.1
 Web-site mirroring tool for archive.org
 
-Developed by Oliver Molini
+Developed by Oliver Molini for Protonet
 Influenced by warrick.pl written by Frank McCown at Old Dominion University
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
@@ -28,4 +28,5 @@ You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directi
 This may or may not be enough for Warnick to create its temporary log files.
 A larger size may be needed for Warnick to run properly.
 
-You may use the software any way you would like, just know you do it at your own risk. I may not be held liable for any damages direct or indirect resulting from the use of this software..
+You may use the software any way you would like, just know you do it at your own risk. 
+The developer and the project team members may not be held liable for any damages direct or indirect resulting from the use of this software.
