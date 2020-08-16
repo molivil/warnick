@@ -8,15 +8,9 @@ Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-## Usage
-```
-$ get.sh <url> [datestring]
-$ get.sh www.domain.com
-$ get.sh www.domain.com/path_to/file.html 199704
-```
-
-This will start mirroring content from archive.org under the given path and date.
-Date must be given in YYYYMM format.
+## Installation
+- Copy get.sh and getrel.sh into a directory.
+- Make a writable subdirectory called "sites".
 
 ## Script prerequisites
 - bash, tee, cut, grep, cat, md5sum, date
@@ -32,3 +26,13 @@ A larger size may be needed for Warnick to run properly.
 
 You may use the software any way you would like, just know you do it at your own risk. 
 The developer and the project team members may not be held liable for any damages direct or indirect resulting from the use of this software.
+
+## Usage
+```
+$ get.sh <url> [datestring]
+$ get.sh www.domain.com
+$ get.sh www.domain.com/path_to/file.html 199704
+```
+
+This will start mirroring content from archive.org under the given path and date.
+Date must be given in YYYYMM format.
