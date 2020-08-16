@@ -8,7 +8,7 @@ Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-# Usage:
+# Usage
 $ get.sh <url> [datestring]
 $ get.sh www.domain.com
 $ get.sh www.domain.com/path_to/file.html 199704
