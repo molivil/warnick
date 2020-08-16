@@ -9,9 +9,7 @@ For further licensing information, please visit.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 # Usage
- $ get.sh <url> [datestring]
- $ get.sh www.domain.com
- $ get.sh www.domain.com/path_to/file.html 199704
+ $ get.sh <url> [datestring]$ get.sh www.domain.com$ get.sh www.domain.com/path_to/file.html 199704
 
 This will start mirroring content from archive.org under the given path and date.
 Date must be given in YYYYMM format.
