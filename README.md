@@ -2,7 +2,7 @@
 Web-site mirroring tool for archive.org
 
 Developed by Oliver Molini
-Based on warrick.pl written by Frank McCown at Old Dominion University
+Influenced by warrick.pl written by Frank McCown at Old Dominion University
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
@@ -27,3 +27,5 @@ You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directi
 50% or more. By default, 10% of physical memory is used by the runtime temporary directory.
 This may or may not be enough for Warnick to create its temporary log files.
 A larger size may be needed for Warnick to run properly.
+
+You may use the software any way you would like, just know you do it at your own risk. I may not be held liable for any damages direct or indirect resulting from the use of this software..
