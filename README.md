@@ -21,7 +21,7 @@ Date must be given in YYYYMM format.
 - wget
 - perl
 - RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
-
+ 
 # CHANGE IN RUNTIME REQUIREMENTS
 You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to.
 50% or more. By default, 10% of physical memory is used by the runtime temporary directory.
