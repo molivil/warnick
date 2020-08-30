@@ -11,7 +11,7 @@ https://creativecommons.org/licenses/by-nc-sa/4.0/
 ## Installation
 ### Script prerequisites
 - bash, tee, cut, grep, cat, md5sum, date
-- wget
+- wget, curl
 - perl
 - RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
 
