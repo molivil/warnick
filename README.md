@@ -1,4 +1,4 @@
-# WARNICK v1.2.1
+# WARNICK v1.3.0
 Web-site mirroring tool for archive.org
 
 Developed by Oliver Molini for Protonet
@@ -33,8 +33,9 @@ The developer and the project team members may not be held liable for any damage
 ```
 $ get.sh <url> [datestring]
 $ get.sh www.domain.com
-$ get.sh www.domain.com/path_to/file.html 199704
+$ get.sh www.domain.com 1997
+$ get.sh www.domain.com 199704
+$ get.sh www.domain.com/path_to/file.html 19970411
 ```
-
 This will start mirroring content from archive.org under the given path and date.
-Date must be given in YYYYMM format.
+Datestring must be given in YYYYMMDD format. You may omit the month and day.
