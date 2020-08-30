@@ -1,5 +1,5 @@
 #!/bin/bash
-# WARNICK v1.2.3
+# WARNICK v1.3.0
 # Web-site mirroring tool for archive.org
 #
 # Developed by Oliver Molini
@@ -109,7 +109,7 @@ if [ "$1" = "" ]
     printf "\nUsage:\n\n"
     printf "  $ $0 <url> [datestring]\n\n"
     printf "  $ $0 www.domain.com\n"
-    printf "  $ $0 www.domain.com/path_to/file.html 1997\n"
+    printf "  $ $0 www.domain.com 1997\n"
     printf "  $ $0 www.domain.com/path_to/file.html 199704\n"
     printf "  $ $0 www.domain.com/path_to/file.html 19970411\n"
   else
