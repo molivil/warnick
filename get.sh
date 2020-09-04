@@ -39,7 +39,7 @@
 # Note: If the site is large, do not use more than 5 or 6 here.
 #
 # How deep should the script delve into the site (by default)
-export maxdepth=5
+export maxdepth=4
 
 # Log level for Warnick.
 # 0 - Silent operation
