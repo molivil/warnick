@@ -58,5 +58,4 @@ Override the default maxdepth value specified with the $defaultmaxdepth environm
 This sets the default maximum depth hardlimit, and will exit the subprocess once the limit has been reached. If the site is large, do not use much more than 5 or 6 here, to prevent the script from entering seemingly neverending infinite loops. In many cases a page that is 5 links deep can be reached from a page that is at a shallower depth, unless the web site happens to be a portal, so it should be relatively safe to use a lower value here, such as 4 or 5.
 
 ## Important!
-If you specify a maxdepth, you must also specify an owner. Owner must "nobody",
-or $defaultowner, unless used in a multi-user environment in a web integration.
+If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
