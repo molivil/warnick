@@ -47,9 +47,7 @@ Mirror an Wayback Machine URL specified with this parameter.
 The "http://" -prefix is not required.
 
 ### Datestring
-Target a specific date. The targeted date will be used when discovering files
-from archive.org. Datestring must be given in YYYYMMDD format. You may omit
-the month and day.
+Target a specific date. The targeted date will be used when discovering files from archive.org. Datestring must be given in YYYYMMDD or YYYYMM or YYYY format. You may omit the day or month and day.
 
 ### Owner 
 This sets the job owner for the script. Use "nobody" here at all times, unless the script is used as part of a web integration in a multiuser environment.
