@@ -35,9 +35,9 @@ $ get.sh <URL> [datestring] [owner] [maxdepth]
 ### Examples
 ```
 $ get.sh www.domain.com
-$ get.sh www.domain.com 1997
-$ get.sh www.domain.com/path/ 199704
-$ get.sh www.domain.com/path/file.html 19970411 nobody 5
+$ get.sh www.domain.com 1997 nobody 5
+$ get.sh www.domain.com/path/ 199704 nobody 5
+$ get.sh www.domain.com/path/file.html 19970411
 ```
 This will mirror the given URL from archive.org and use the datestring to target files that are close to the given date. The web site  will be stored under the subdirectory ./sites/www.domain.com"
 
