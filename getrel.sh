@@ -3,14 +3,16 @@
 
 debug=0
 
-
 # Limit how many links to scan (to avoid hanging on really big html files)
-maxlinks=99
+maxlinks=1500
 
 if [ ! "$4" = "" ]; then pl=$4; fi
 if [ ! "$5" = "" ]; then tempdir=$5; fi
 if [ ! "$6" = "" ]; then logfile=$6; fi
 if [ ! "$7" = "" ]; then startpath=$7; fi
+
+# Only set maxdepth if it is not found as a exported var
+if [[ -z $maxdepth ]]; then maxdepth=1; fi   
 
 if [ "$1" == "" ]; then
   echo =============================================================
@@ -35,8 +37,10 @@ else
   if [[ $path == "/." ]]; then
     path=""
   fi
-  #tempfile="./sites/$host/links-`date |md5sum |cut -b 1-10`.tmp"
-  #tempfile="/run/user/1001/links-`date +%N |md5sum |cut -b 1-10`.tmp"
+
+  if [[ -z $tempdir ]]; then
+    tempdir="./temp"
+  fi
   tempfile="$tempdir/links.tmp"
 
   # Create site directory if missing
@@ -50,28 +54,41 @@ else
     if [ -f "./sites/$1" ]; then
       if [ "$3" == "--verbose" ]; then echo $0: Parameters: $1 $2 $3; fi
       if [ "$3" == "--verbose" ]; then echo $0: Parsing links from HTML...; fi
+
+      # Warning: this matches <script [src=""]> too.
+
       # <img [src="/path/to_file.jpg"]>
+      perl -0ne 'print "$1\n" while (/ src=\"(.*?)\"/igs)' ./sites/$1 > $tempfile
+
       # <img [src=/path/to_file.jpg>]
-      perl -0ne 'print "$1\n" while (/src=\"(.*?)\"/igs)' ./sites/$1 > $tempfile
-      perl -0ne 'print "$1\n" while (/src=([^"].*?)[\s]?>/igs)' ./sites/$1 >> $tempfile
+      perl -0ne 'print "$1\n" while (/ src=([^"].*?)[\s]?>/igs)' ./sites/$1 >> $tempfile
+
       # <body [background="/path/to_file.jpg"]>
       perl -0ne 'print "$1\n" while (/background=\"(.*?)\"/igs)' ./sites/$1 >> $tempfile
-      # <a [href="/path/to_file.jpg"]>
-      # <a [href=/path/to_file.jpg>]
-      perl -0ne 'print "$1\n" while (/href=\"(.*?)\"/igs)' ./sites/$1 >> $tempfile
-      perl -0ne 'print "$1\n" while (/href=([^"].*?)[\s]?>/igs)' ./sites/$1 >> $tempfile
+
+      # <a[ href="/path/to_file.jpg"]>
+      perl -0ne 'print "$1\n" while (/ href=\"(.*?)\"/igs)' ./sites/$1 >> $tempfile
+      # [<a href=/path/to_file.jpg>]
+      perl -0ne 'print "$1\n" while (/<a href=([^"].*?)[\s]?>/igs)' ./sites/$1 >> $tempfile
+
+      #   old method would include [&lt;a href=&quot;http://...] which we don't want:
+      # # <a [href="/path/to_file.jpg"]>
+      # perl -0ne 'print "$1\n" while (/href=\"(.*?)\"/igs)' ./sites/$1 >> $tempfile
+      # # <a [href=/path/to_file.jpg>]
+      # perl -0ne 'print "$1\n" while (/href=([^"].*?)[\s]?>/igs)' ./sites/$1 >> $tempfile
 
       # Convert direct and full URLs pointing to self into non-relative URL's
       # and remove repetitive links (uniq) and filter out (grep -v) links which
       # contain the specified strings:
 
-      a=`cat $tempfile |sed -e "s/http:\/\/www.$hostdomain//ig;s/http:\/\/$hostdomain//ig;s/www.$hostdomain//ig;s/$hostdomain//ig" |uniq |grep -vE 'http:|mailto:|ftp:|telnet:|https:|javascript:|#'`
-
       if [ "$3" == "--verbose" ]; then echo $0: Parse complete.; fi
+      if [ "$3" == "--verbose" ]; then echo $0: "Sorting and removing repeated URLs, special mailto: links, etc."; fi
+      #
+      # Changed from cat to sort |uniq, to better detect repeated URL's.
+      a=`sort $tempfile |uniq |sed -e "s/http:\/\/www.$hostdomain//ig;s/http:\/\/$hostdomain//ig;s/www.$hostdomain//ig;s/$hostdomain//ig" |grep -vE 'http:|mailto:|ftp:|telnet:|https:|javascript:|#'`
 
       rm "$tempfile"
-#      if [ "$3" == "--verbose" ]; then
-      if [ "$3" == "--verbose" ]; then 
+      if [ "$3" == "--verbose" ]; then
         echo "======================================================"
         echo "$0: Found the following links:"
       fi
@@ -127,6 +144,15 @@ else
           fi
         fi
 
+        # The link parser is not perfect, so check here to see if link is
+        # valid with no special characters floating around to prevent downloading
+        # invalid files.
+        # MATCH: = & + % ; | : "
+        if [[ "$fullpath" =~ [=\&+%\;|:\"] ]]; then
+          ignorefile="1"
+          linktype="INVALID "
+        fi
+
         if [ "$3" == "--verbose" ]; then echo "$0: --- $linktype $fullpath"; fi
 
         if [[ "$ignorefile" == "1" ]]; then
@@ -135,7 +161,7 @@ else
         else
           # Please download
           printf "."
-          cmdadd=$(echo "./get.sh $fullpath $2 $pl $tempdir $logfile $startpath")
+          cmdadd=$(echo "./get.sh $fullpath $2 null null $pl $tempdir $logfile $startpath")
         fi
 
         # Add determined command to command list
@@ -162,7 +188,7 @@ else
       fi
     fi
   else
-    if [ "$4" == "--verbose" ]; then
+    if [ "$3" == "--verbose" ]; then
       printf "`date +"%d.%m.%Y %T"` GETREL: Not a .htm or .html file.\n" 2>&1 |tee -a ./sites/recovery.log
     else
       printf "`date +"%d.%m.%Y %T"` GETREL: Not a .htm or .html file.\n" >> ./sites/recovery.log
