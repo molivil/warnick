@@ -1,8 +1,8 @@
-# WARNICK v1.3.0
+# WARNICK v1.4.3
 Web-site mirroring tool for archive.org
 
-Developed by Oliver Molini for Protonet
-Influenced by warrick.pl written by Frank McCown at Old Dominion University
+Developed by Oliver Molini for ProtoWeb.org
+Some portions based on warrick.pl by Frank McCown at Old Dominion University
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
@@ -18,7 +18,6 @@ https://creativecommons.org/licenses/by-nc-sa/4.0/
 ### Mirror from Github
 - Have get.sh and getrel.sh mirrored into an empty directory.
 - Make a writable subdirectory called "sites".
-
  
 ### Change in runtime requirements
 You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to.
@@ -31,11 +30,33 @@ The developer and the project team members may not be held liable for any damage
 
 ## Usage
 ```
-$ get.sh <url> [datestring]
+$ get.sh <URL> [datestring] [owner] [maxdepth]
 $ get.sh www.domain.com
 $ get.sh www.domain.com 1997
 $ get.sh www.domain.com 199704
-$ get.sh www.domain.com/path_to/file.html 19970411
+$ get.sh www.domain.com/path_to/file.html 19970411 nobody 5
 ```
-This will start mirroring content from archive.org under the given path and date.
-Datestring must be given in YYYYMMDD format. You may omit the month and day.
+This will mirror the given URL from archive.org under the given path and date,
+and store the site files under the subdirectory ./sites/www.domain.com"
+
+## Parameters explained
+### URL
+Mirror an Wayback Machine URL specified with this parameter.
+The "http://" -prefix is not required.
+
+### Datestring
+Target a specific date. The targeted date will be used when discovering files
+from archive.org. Datestring must be given in YYYYMMDD format. You may omit
+the month and day.
+
+### Owner 
+This sets the job owner for the script. Use "nobody" here at all times, unless the script is used as part of a web integration in a multiuser environment.
+
+### Maxdepth
+Override the default maxdepth value specified with the $defaultmaxdepth environment variable. 
+
+This sets the default maximum depth hardlimit, and will exit the subprocess once the limit has been reached. If the site is large, do not use much more than 5 or 6 here, to prevent the script from entering seemingly neverending infinite loops. In many cases a page that is 5 links deep can be reached from a page that is at a shallower depth, unless the web site happens to be a portal, so it should be relatively safe to use a lower value here, such as 4 or 5.
+
+## Important!
+If you specify a maxdepth, you must also specify an owner. Owner must "nobody",
+or $defaultowner, unless used in a multi-user environment in a web integration.
