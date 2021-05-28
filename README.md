@@ -59,3 +59,7 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 
 ## Important!
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
+
+### Known bugs
+Occasionally Warnick tends to get stuck in an infinite loop with a website. I will need to fix this at some point. If you run into this bug, as a workaround, you can either use it on subdirectories of the site, until the culprit is found, or use a smaller maxdepth value. 
+
