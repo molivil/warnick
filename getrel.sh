@@ -1,6 +1,8 @@
 #!/bin/bash
 #
 
+# debug mode on?
+# debug=1 or debug=0
 debug=0
 
 # Limit how many links to scan (to avoid hanging on really big html files)
@@ -12,16 +14,14 @@ if [ ! "$6" = "" ]; then logfile=$6; fi
 if [ ! "$7" = "" ]; then startpath=$7; fi
 
 # Only set maxdepth if it is not found as a exported var
-if [[ -z $maxdepth ]]; then maxdepth=1; fi   
+if [[ -z $maxdepth ]]; then maxdepth=1; fi
 
 if [ "$1" == "" ]; then
   echo =============================================================
-  echo Get related links.
+  echo Open HTML file and parse direct and relative links.
   echo Usage
-  echo $0 www.domain.com/file.html www.domain.com 199612 [--verbose]
+  echo $0 www.domain.com/file.html 199612 [--verbose]
   echo
-  echo To quickly test on existing html-file:
-  echo $0 www.3drealms.com/index.html 199612 --verbose
   echo =============================================================
   echo
 else
@@ -43,14 +43,8 @@ else
   fi
   tempfile="$tempdir/links.tmp"
 
-  # Create site directory if missing
-  #if [ ! -d "./sites/$host" ]; then
-  #  mkdir -p ./sites/$host
-  #fi
-
   # Scan links on only specific filetypes, when process level ($pl) is less than maxdepth
-  if [[ "$1" == *.html || "$1" == *.htm || "$1" == *.asp || "$1" == *.shtml ]]; then 
-    # && [[ "$pl" -lt "$maxdepth" ]]; then
+  if [[ "$1" == *.html || "$1" == *.htm || "$1" == *.asp || "$1" == *.shtml ]]; then
     if [ -f "./sites/$1" ]; then
       if [ "$3" == "--verbose" ]; then echo $0: Parameters: $1 $2 $3; fi
       if [ "$3" == "--verbose" ]; then echo $0: Parsing links from HTML...; fi
@@ -147,8 +141,8 @@ else
         # The link parser is not perfect, so check here to see if link is
         # valid with no special characters floating around to prevent downloading
         # invalid files.
-        # MATCH: = & + % ; | : "
-        if [[ "$fullpath" =~ [=\&+%\;|:\"] ]]; then
+        # MATCH: = & + % ; | : " @
+        if [[ "$fullpath" =~ [=\&+%\;|:\"@\<\>] ]]; then
           ignorefile="1"
           linktype="INVALID "
         fi
@@ -163,6 +157,7 @@ else
           printf "."
           cmdadd=$(echo "./get.sh $fullpath $2 null null $pl $tempdir $logfile $startpath")
         fi
+
 
         # Add determined command to command list
         cmdlist=$(printf "$cmdlist$cmdadd\n ")

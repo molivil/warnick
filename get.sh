@@ -1,4 +1,5 @@
 #!/bin/bash
+#
 # WARNICK Web-site mirroring tool for archive.org
 #
 # Developed by Oliver Molini for ProtoWeb.org
@@ -9,7 +10,7 @@
 # https://creativecommons.org/licenses/by-nc-sa/4.0/
 #
 # Usage:
-# $ get.sh <url> [datestring]
+# $ get.sh <URL> [datestring] [owner] [maxdepth]
 # $ get.sh www.domain.com
 # $ get.sh www.domain.com/path_to/file.html 199704
 #
@@ -21,7 +22,7 @@
 # - wget, curl
 # - perl
 # - RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
-
+#
 # CHANGE IN RUNTIME REQUIREMENTS
 # You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to 
 # 50% or more. By default, 10% of physical memory is used by the runtime temporary directory.
@@ -44,10 +45,11 @@
 #                        perfectly valid file. With some changes the parser
 #                        script now makes a better attempt at detecting and
 #                        ignoring links that clearly are not real files.
+# 2021-04-30    1.4.4    Added watchdog counter to prevent infinite loops.
 # -----------------------------------------------------------------------------
 
 # Script version number
-export version="1.4.3"
+export version="1.4.4"
 
 # This variable sets the default maximum depth hardlimit, and will exit the
 # subprocess once the limit has been reached.
@@ -114,13 +116,21 @@ defaultowner=nobody
 # Download images from anywhere if necessary.
 export subdirsonly=1
 
+# The script avoids infinite loops by using a watchdog counter. This counter
+# is incremented every time there is a page referencing itself somewhere else.
+# A higher number usually means a more complete page capture, but increases time
+# to download exponentially. The watchdog counter may go over this value.
+# If you don't know what this is, leave it at default value of 100.
+export wdthreshold=100
+
 function log {
   if [ "$loglevel" -ge "$1" ]; then
     if [ ! -z $pl ]; then
       plstr=" ($pl/$maxdepth)"
     fi
-#    printf "\n`date +"%d.%m.%Y %T"`$plstr: $2" 2>&1 |tee -a $logfile
-    printf "\n$(date +"%Y/%m/%d %H:%M:%S")$plstr: $2" 2>&1 |tee -a $logfile
+    wdcounter="$(cat $tempdir/watchdog.tmp 2>/dev/null)"
+    if [ $wdcounter -lt $wdthreshold ]; then wdcounter=; else wdcounter=" (watchdog counter $wdcounter)"; fi
+    printf "\n$(date +"%Y/%m/%d %H:%M:%S")$plstr:$wdcounter $2" 2>&1 |tee -a $logfile
   fi
 }
 
@@ -138,12 +148,12 @@ fi
 if [ "$1" = "" ]; then
   echo
   echo "Usage:"
-  echo "  $ $0 <url> [datestring] [owner] [maxdepth]"
+  echo "  $ $0 <URL> [datestring] [owner] [maxdepth]"
   echo
   echo "  $ $0 www.domain.com"
   echo "  $ $0 www.domain.com 1997"
   echo "  $ $0 www.domain.com/path/ 199704"
-  echo "  $ $0 www.domain.com/path/file.html 199704"
+  echo "  $ $0 www.domain.com/path/file.html 199704 nobody 5"
   echo
   echo "  A proper invocation of this script will mirror the given URL from"
   echo "  archive.org, and store the site files under the subdirectory"
@@ -193,6 +203,9 @@ if [[ -z "$5" ]]; then
     export maxdepth=$4
   fi
 
+  # reset watchdog counter
+  echo "0" >$tempdir/watchdog.tmp
+
   log 1 "Mirroring contents from: $host/$startpath"
   log 1 "Target Date: $d"
   log 1 "Max Traversal Depth: $maxdepth"
@@ -230,6 +243,14 @@ if [ ! -z "$1" ]; then
     # Stop processing, if "cancel-job" file is found in $tempdir
     if [ -f "$tempdir/cancel-job" ]; then
       log 1 "- Job canceled!"
+      exit
+    fi
+
+    # Stop processing, if watchdog counter is above threshold
+    wdcounter=$(cat $tempdir/watchdog.tmp 2>/dev/null)
+    wdoverage=$(expr $wdcounter - $wdthreshold)
+    if [ $wdoverage -ge 0 ] && [ "$pl" -ge "$(expr $maxdepth - $wdoverage / $wdthreshold)" ]; then
+      log 3 "- Watchdog limit reached (wdcounter=$wdcounter, wdoverage=$wdoverage). Exiting subprocess."
       exit
     fi
 
@@ -297,8 +318,10 @@ if [ ! -z "$1" ]; then
           elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 1)" ]]; then altfound=1    # Alt found year - 1
           elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 2)" ]]; then altfound=1    # Alt found year - 2
           elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 3)" ]]; then altfound=1    # Alt found year - 3
+          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 4)" ]]; then altfound=1    # Alt found year - 4
           elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 1)" ]]; then altfound=1    # Alt found year + 1
           elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 2)" ]]; then altfound=1    # Alt found year + 2
+          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 3)" ]]; then altfound=1    # Alt found year + 3
           fi
         else
           # The file is not an HTML file, so we can go ahead and download the alternative,
@@ -343,6 +366,9 @@ if [ ! -z "$1" ]; then
       rm -r $tempdir/web >/dev/null 2>&1                  #remove ./web
       log 1 "$host/$path OK!"
 
+      # reset watchdog counter
+      echo "0" >$tempdir/watchdog.tmp
+
       # cooldown timer
       printf "\b\b\b   \b\b"
       for i in {1..2}
@@ -360,6 +386,10 @@ if [ ! -z "$1" ]; then
         else
           printf " "
         fi
+        # Add to watchdog counter
+        wdcounter=$(cat $tempdir/watchdog.tmp)
+        wdcounter=$(expr $wdcounter \+ 1)
+        echo $wdcounter >$tempdir/watchdog.tmp
       fi
       if [ ! "$existing" == "1" ]; then
         log 2 "- Error processing file or retrieved file not found."
@@ -407,9 +437,9 @@ if [[ -z "$5" ]]; then
     if [ "$owner" != "$defaultowner" ]; then
       # This part gets executed when the owner is specified,
       # as expected when web integration and multiuser mode are enabled.
-      mkdir -p ./temp/complete/warnick-$wid 2>&1
-      mv $tempdir ./temp/complete/ 2>&1
-      mv ./sites/$host ./remote/sites-www/ 2>&1
+      mkdir -p ./temp/complete/warnick-$wid 2>&1 |tee -a $logfile
+      mv $tempdir ./temp/complete/ 2>&1  |tee -a $logfile
+      mv ./sites/$host ./remote/sites-www/ 2>&1 |tee -a $logfile
     fi
   fi
 fi
