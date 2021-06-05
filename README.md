@@ -65,14 +65,14 @@ If you specify a maxdepth, you must also specify an owner. Owner must always be 
 ### Changes
 - Rewrote the link parser script so Warnick can more readily parse non-standard HTML tags such as &lt;A Href &nbsp;= &nbsp;link.html &nbsp;&gt;
 ### Known bugs
-- Some links may be rarely left out due to their references being non-case sensitive. See v1.4.2 for more details.
+- In rare circumstances some links may rarely be left out due to their references being written with a non-case sensitive server in mind. See v1.4.2 for more details.
 
 ## 1.4.4 (2021-05-29)
 ### Changes
 - Added watchdog code to prevent infinite loops. Fixes the infinite loop problem.
 ### Known bugs
 - Some links do not parse properly when a page uses non-standard HTML tags.
-- Some links may be rarely left out due to their references being non-case sensitive. See v1.4.2 for more details.
+- In rare circumstances some links may rarely be left out due to their references being written with a non-case sensitive server in mind. See v1.4.2 for more details.
 
 ## 1.4.3 (2021-04-30)
 ### Changes
@@ -89,4 +89,4 @@ If you specify a maxdepth, you must also specify an owner. Owner must always be 
 ### Known bugs
 - Occasionally Warnick tends to get stuck in an infinite loop with a website. If you run into this bug, as a workaround, you can either use it on subdirectories of the site, until the culprit is found, or use a smaller maxdepth value. 
 - Some links do not parse properly when a page uses non-standard HTML tags.
-- Some links may be rarely left out due to their references being non-case sensitive. This most commonly happens when original websites were Windows-based, and less commonly with websites with lax redirection rules. An example is when downloading www.geocities.com/Area51/1000/, where the website refers to /area51/main.html, and the actual directory where the file resides, is /Area51/main.html. The script would make a case-sensitive comparison to see if the directory is the same or not, and rule out /area51/main.html, because it sees it as a different directory. From the point of view of Geocities.com, the directories Area51 and area51 are one and the same (aliased). 
+- In rare circumstances some links may rarely be left out due to their references being written with a non-case sensitive server in mind. This situation can happen when pages were written for a Windows-based server, and less commonly with websites with lax rules in place taken care of with numerous redirections. An example is when downloading www.geocities.com/Area51/1000/, where the website refers to /area51/main.html, and the actual directory where the file resides, is /Area51/main.html. Geocities had a redirection from /area51/ to /Area51/ so the problem was transparent from the author's view. This however makes a case-sensitive comparison to see if the directory is the same or not, and rules out /area51/main.html, because it sees it as a different directory. From the point of view of Geocities.com, the directories Area51 and area51 are one and the same (aliased). 
