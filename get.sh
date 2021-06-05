@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #
 # WARNICK Web-site mirroring tool for archive.org
 #
@@ -45,11 +46,13 @@
 #                        perfectly valid file. With some changes the parser
 #                        script now makes a better attempt at detecting and
 #                        ignoring links that clearly are not real files.
-# 2021-04-30    1.4.4    Added watchdog counter to prevent infinite loops.
+# 2021-05-29    1.4.4    Added watchdog counter to prevent infinite loops.
+# 2021-06-04    1.5.0    Rewrote the link parser engine so the script can more
+#                        readily parse non-standard links from HTML pages.
 # -----------------------------------------------------------------------------
 
 # Script version number
-export version="1.4.4"
+export version="1.5.0"
 
 # This variable sets the default maximum depth hardlimit, and will exit the
 # subprocess once the limit has been reached.
@@ -65,7 +68,7 @@ export version="1.4.4"
 #
 # How deep should the script delve into the site (by default)
 #
-export defaultmaxdepth=5
+export defaultmaxdepth=8
 
 # Log level for Warnick
 # After operation completes, the log file (recovery.log) will be saved along with
@@ -74,9 +77,17 @@ export defaultmaxdepth=5
 # 0 - Silent operation.
 # 1 - Normal logs. Display start of session, downloaded files and error conditions
 # 2 - All logs. In addition to normal logs, display existing files.
-# 3 - Display debug information in addition to all above
+# 3 - Display even more information in addition to all above
 #
 export loglevel=1
+
+# Link parser debug Mode
+# If enabled, will show a list of parsed links, and display a confirmation dialog
+# 0 - No confirmations
+# 1 - Confirm link parser output
+# 2 - Confirm link parser output and show link parser diagnostic data
+#
+export debug=0
 
 #
 # If a file cannot be downloaded, create a dummy file in its place.
@@ -116,6 +127,11 @@ defaultowner=nobody
 # Download images from anywhere if necessary.
 export subdirsonly=1
 
+# The script waits for a cooldown period after each successful download.
+# This is used to slow down successive downloads, and prevents your IP
+# from getting banned at archive.org. We recommend using 2 or higher.
+cooldown=2
+
 # The script avoids infinite loops by using a watchdog counter. This counter
 # is incremented every time there is a page referencing itself somewhere else.
 # A higher number usually means a more complete page capture, but increases time
@@ -123,13 +139,21 @@ export subdirsonly=1
 # If you don't know what this is, leave it at default value of 100.
 export wdthreshold=100
 
+
 function log {
   if [ "$loglevel" -ge "$1" ]; then
     if [ ! -z $pl ]; then
       plstr=" ($pl/$maxdepth)"
     fi
     wdcounter="$(cat $tempdir/watchdog.tmp 2>/dev/null)"
-    if [ $wdcounter -lt $wdthreshold ]; then wdcounter=; else wdcounter=" (watchdog counter $wdcounter)"; fi
+
+    if [[ ! -z "$wdcounter" ]]; then
+      if [ "$wdcounter" -lt "$wdthreshold" ]; then
+        wdcounter=
+      else
+        wdcounter=" (watchdog counter $wdcounter)"
+      fi
+    fi
     printf "\n$(date +"%Y/%m/%d %H:%M:%S")$plstr:$wdcounter $2" 2>&1 |tee -a $logfile
   fi
 }
@@ -226,188 +250,187 @@ if [[ ! -z "$7" ]]; then logfile=$7; fi
 if [[ ! -z "$8" ]]; then startpath=$8; fi
 
 if [ ! -z "$1" ]; then
-    # Track how many subprocesses we are running
-    if [ "$5" = "" ]
-      then
-        pl=1
-      else
-        pl=`expr $5 + 1`
-    fi
+  # Track how many subprocesses we are running
+  if [ "$5" = "" ]
+    then
+      pl=1
+    else
+      pl=`expr $5 + 1`
+  fi
 
-    # Prevent infinite loops here
-    if [ "$pl" -gt "$maxdepth" ]; then
-      log 2 "- Maximum depth reached (maxdepth=$maxdepth), exiting subprocess."
-      exit
-    fi
+  # Prevent infinite loops here
+  if [ "$pl" -gt "$maxdepth" ]; then
+    log 2 "- Maximum depth reached (maxdepth=$maxdepth), exiting subprocess."
+    exit
+  fi
 
-    # Stop processing, if "cancel-job" file is found in $tempdir
-    if [ -f "$tempdir/cancel-job" ]; then
-      log 1 "- Job canceled!"
-      exit
-    fi
+  # Stop processing, if "cancel-job" file is found in $tempdir
+  if [ -f "$tempdir/cancel-job" ]; then
+    log 1 "- Job canceled!"
+    exit
+  fi
 
-    # Stop processing, if watchdog counter is above threshold
-    wdcounter=$(cat $tempdir/watchdog.tmp 2>/dev/null)
-    wdoverage=$(expr $wdcounter - $wdthreshold)
-    if [ $wdoverage -ge 0 ] && [ "$pl" -ge "$(expr $maxdepth - $wdoverage / $wdthreshold)" ]; then
-      log 3 "- Watchdog limit reached (wdcounter=$wdcounter, wdoverage=$wdoverage). Exiting subprocess."
-      exit
-    fi
+  # Stop processing, if watchdog counter is above threshold
+  wdcounter=$(cat $tempdir/watchdog.tmp 2>/dev/null)
+  wdoverage=$(expr $wdcounter - $wdthreshold)
+  if [ $wdoverage -ge 0 ] && [ "$pl" -ge "$(expr $maxdepth - $wdoverage / $wdthreshold)" ]; then
+    log 3 "- Watchdog limit reached (wdcounter=$wdcounter, wdoverage=$wdoverage). Exiting subprocess."
+    exit 0
+  fi
 
-    # Stop processing if filename contains weird names
-    if [[ "${path,,}" == *"border="* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"width="* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"height="* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"alt="* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"onmouseover"* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"onmouseout"* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"()"* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *","* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"+"* ]]; then weirdname=1; fi
-    if [[ "${path,,}" == *"file:"* ]]; then weirdname=1; fi
+  # Stop processing if filename contains weird names
+  if [[ "${path,,}" == *"border="* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"width="* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"height="* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"alt="* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"onmouseover"* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"onmouseout"* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"()"* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *","* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"+"* ]]; then weirdname=1; fi
+  if [[ "${path,,}" == *"file:"* ]]; then weirdname=1; fi
 
-    if [[ ! -z $weirdname ]]; then
-      log 2 "$host/$path Not processing weird file: $path"
-      exit
-    fi
+  if [[ ! -z $weirdname ]]; then
+    log 2 "$host/$path Not processing weird file: $path"
+    exit
+  fi
 
-    # Remove weird characters
-    host=$(echo -n $host | tr -d ":\'\"")
-    path=$(echo -n $path | tr -d ":\'\"")
+  # Remove weird characters
+  host=$(echo -n $host | tr -d ":\'\"")
+  path=$(echo -n $path | tr -d ":\'\"")
 
 #    printf "`date +"%d.%m.%Y %T"` GET($pl): http://$host/$path\n" 2>&1 |tee -a $logfile
 
-    # Check if file exists before attempting to download...
-    if [ -f "./sites/$host/$path" ] || [ -f "./sites/$host/$path/index.html" ] || [ -f "./sites/$host/$path/index.htm" ] || [ -f "./sites/$host/$path/index.shtml" ] || [ -f "./sites/$host/$path/index.asp" ]; then
-      mkdir -p "$tempdir/web" >/dev/null 2>&1
-      existing="1"
-    else
-      # wget --quiet -nH -p -nc -P ./sites/$host http://web.archive.org/web/${d}00000000id_/http://$host/$path
-      #wget --quiet -e robots=off -nH -nc -P ./sites/$host/web http://web.archive.org/web/${d}00000000id_/http://$host/$path 2>&1 |tee -a ./sites/recovery.log
+  # Check if file exists before attempting to download...
+  if [ -f "./sites/$host/$path" ] || [ -f "./sites/$host/$path/index.html" ] || [ -f "./sites/$host/$path/index.htm" ] || [ -f "./sites/$host/$path/index.shtml" ] || [ -f "./sites/$host/$path/index.asp" ]; then
+    mkdir -p "$tempdir/web" >/dev/null 2>&1
+    existing="1"
+  else
+    # wget --quiet -nH -p -nc -P ./sites/$host http://web.archive.org/web/${d}00000000id_/http://$host/$path
+    #wget --quiet -e robots=off -nH -nc -P ./sites/$host/web http://web.archive.org/web/${d}00000000id_/http://$host/$path 2>&1 |tee -a ./sites/recovery.log
+    archurl="https://web.archive.org/web/${d}00000000id_/http://$host/$path"
+    log 2 "Trying $archurl"
 
-      archurl="https://web.archive.org/web/${d}00000000id_/http://$host/$path"
-
-      log 2 "Trying $archurl"
-
-      # Get status code for next page to be archived.
-      archstatus="$(curl -sI $archurl |head -n1 |cut -b8-10)"
-      # File not found
-      if [[ $archstatus == "404" ]]; then
-        log 1 "$host/$path 404 - Not found."
-        #log 3 "404 - File not found, cannot proceed."
-      fi
-
-      # Page found and archived (200)
-      if [[ $archstatus == "200" ]]; then
-        log 3 "200 - Page found!"
-        wget --quiet --max-redirect=0 -e robots=off -nH -nc -P $tempdir/web $archurl 2>&1 |tee -a $logfile
-      fi
-
-      # Page redirected (302)
-      if [[ $archstatus == "302" ]]; then
-        archfounddate=$(curl -sI $archurl |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)
-        archfounddate=${archfounddate:0:14}
-        log 3 "$host/$path 302 - Resource found on a different date ($archfounddate) $path$ext"
-
-        if [[ "$path$ext" == *.html || "$path$ext" == *.htm || "$path$ext" == *.asp || "$path$ext" == *.shtml ]]; then
-          # File is a HTML document. Only download if it is at or near target date.
-          # Get location field
-          if [[ "${archfounddate:0:8}" == "${d:0:8}" ]]; then altfound=1      # Alt found same day
-          elif [[ "${archfounddate:0:6}" == "${d:0:6}" ]]; then altfound=1    # Alt found same month
-          elif [[ "${archfounddate:0:4}" == "${d:0:4}" ]]; then altfound=1    # Alt found same year
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 1)" ]]; then altfound=1    # Alt found year - 1
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 2)" ]]; then altfound=1    # Alt found year - 2
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 3)" ]]; then altfound=1    # Alt found year - 3
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 4)" ]]; then altfound=1    # Alt found year - 4
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 1)" ]]; then altfound=1    # Alt found year + 1
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 2)" ]]; then altfound=1    # Alt found year + 2
-          elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 3)" ]]; then altfound=1    # Alt found year + 3
-          fi
-        else
-          # The file is not an HTML file, so we can go ahead and download the alternative,
-          # since this file won't be parsed for more links.
-          altfound=1
-        fi
-
-        if [[ "$altfound" == "1" ]]; then
-          log 2 "$host/$path 302 - Alternative copy was found that is within target search range (timecode: $archfounddate)"
-          wget --quiet --max-redirect=2 -e robots=off -nH -nc -P $tempdir/web $archurl 2>&1 |tee -a $logfile
-        else
-          log 1 "$host/$path 302 - No resource found near target date. ($archfounddate)"
-        fi
-      fi
+    # Get status code for next page to be archived.
+    archstatus="$(curl -sI $archurl |head -n1 |cut -b8-10)"
+    # File not found
+    if [[ $archstatus == "404" ]]; then
+      log 1 "$host/$path 404 - Not found."
+      #log 3 "404 - File not found, cannot proceed."
     fi
 
-    # Check to see if wget created the directory ./sites/$host/web
-    if [ -d "$tempdir/web" ]; then
-      # if /web -directory found, assume the file is there, find the file and save
-      # full path to file in the variable $outputfile
-      outputfile=`find $tempdir/web -type f`
-    else
-      # Otherwise clear $outputfile
-      outputfile=""
+    # Page found and archived (200)
+    if [[ $archstatus == "200" ]]; then
+      log 3 "200 - Page found!"
+      wget --quiet --max-redirect=0 -e robots=off -nH -nc -P $tempdir/web $archurl 2>&1 |tee -a $logfile
     fi
 
-    # if the file wget just downloaded is a home page for a directory,
-    # rename it to index.html
-    # BUG: When path contains something/../something, it trips this part
-    # old method:   if [[ ! "$path" == *.* ]]; then
+    # Page redirected (302)
+    if [[ $archstatus == "302" ]]; then
+      archfounddate=$(curl -sI $archurl |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)
+      archfounddate=${archfounddate:0:14}
+      log 3 "$host/$path 302 - Resource found on a different date ($archfounddate) $path$ext"
 
-    if [[ ! $(echo -n "$path" | rev | cut -d'/' -f1 | rev) == *.* ]]; then
-      ext="/index.html" # add extension to filename to be added later!
-    fi
-
-    # Create path for downloaded file
-    mkdir -p `dirname ./sites/$host/$path$ext` >/dev/null 2>&1
-
-    # If a file was downloaded
-    if [ -f "$outputfile" ]; then
-      mv $outputfile ./sites/$host/$path$ext >/dev/null 2>&1   #move wget'ed file out of ./web
-      rm -r $tempdir/web >/dev/null 2>&1                  #remove ./web
-      log 1 "$host/$path OK!"
-
-      # reset watchdog counter
-      echo "0" >$tempdir/watchdog.tmp
-
-      # cooldown timer
-      printf "\b\b\b   \b\b"
-      for i in {1..2}
-      do
-        printf "\b/"; sleep .1
-        printf "\b-"; sleep .1
-        printf "\b\\"; sleep .1
-        printf "\b|"; sleep .1
-      done
-      printf "\bOK! "
-    else
-      if [ "$existing" == "1" ]; then
-        if [ "$loglevel" -ge "2" ]; then
-          log 2 "EXISTS $host/$path$ext "
-        else
-          printf " "
+      if [[ "$path$ext" == *.html || "$path$ext" == *.htm || "$path$ext" == *.asp || "$path$ext" == *.shtml ]]; then
+        # File is a HTML document. Only download if it is at or near target date.
+        # Get location field
+        if [[ "${archfounddate:0:8}" == "${d:0:8}" ]]; then altfound=1      # Alt found same day
+        elif [[ "${archfounddate:0:6}" == "${d:0:6}" ]]; then altfound=1    # Alt found same month
+        elif [[ "${archfounddate:0:4}" == "${d:0:4}" ]]; then altfound=1    # Alt found same year
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 1)" ]]; then altfound=1    # Alt found year - 1
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 2)" ]]; then altfound=1    # Alt found year - 2
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 3)" ]]; then altfound=1    # Alt found year - 3
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} - 4)" ]]; then altfound=1    # Alt found year - 4
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 1)" ]]; then altfound=1    # Alt found year + 1
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 2)" ]]; then altfound=1    # Alt found year + 2
+        elif [[ "${archfounddate:0:4}" == "$(expr ${d:0:4} + 3)" ]]; then altfound=1    # Alt found year + 3
         fi
-        # Add to watchdog counter
-        wdcounter=$(cat $tempdir/watchdog.tmp)
-        wdcounter=$(expr $wdcounter \+ 1)
-        echo $wdcounter >$tempdir/watchdog.tmp
+      else
+        # The file is not an HTML file, so we can go ahead and download the alternative,
+        # since this file won't be parsed for more links.
+        altfound=1
       fi
-      if [ ! "$existing" == "1" ]; then
-        log 2 "- Error processing file or retrieved file not found."
-        if [ "$dummies" == "1" ]; then
-          log 3 "- Creating dummy file ./sites/$host/$path$ext"
-          touch ./sites/$host/$path$ext 2>&1
-        fi
+
+      if [[ "$altfound" == "1" ]]; then
+        log 2 "$host/$path 302 - Alternative copy was found that is within target search range (timecode: $archfounddate)"
+        wget --quiet --max-redirect=2 -e robots=off -nH -nc -P $tempdir/web $archurl 2>&1 |tee -a $logfile
+      else
+        log 1 "$host/$path 302 - No resource found near target date. ($archfounddate)"
       fi
     fi
+  fi
 
+  # Check to see if wget created the directory ./sites/$host/web
+  if [ -d "$tempdir/web" ]; then
+    # if /web -directory found, assume the file is there, find the file and save
+    # full path to file in the variable $outputfile
+    outputfile=`find $tempdir/web -type f`
+  else
+    # Otherwise clear $outputfile
+    outputfile=""
+  fi
+
+  # if the file wget just downloaded is a home page for a directory,
+  # rename it to index.html
+  # BUG: When path contains something/../something, it trips this part
+  if [[ ! $(echo -n "$path" | rev | cut -d'/' -f1 | rev) == *.* ]]; then
+    ext="/index.html" # add extension to filename to be added later!
+  fi
+
+  # Create path for downloaded file
+  mkdir -p `dirname ./sites/$host/$path$ext` >/dev/null 2>&1
+
+  # If a file was downloaded
+  if [ -f "$outputfile" ]; then
+    mv $outputfile ./sites/$host/$path$ext >/dev/null 2>&1   #move wget'ed file out of ./web
+    rm -r $tempdir/web >/dev/null 2>&1                  #remove ./web
+    log 1 "$host/$path OK!"
+
+    # reset watchdog counter
+    echo "0" >$tempdir/watchdog.tmp
+
+    # cooldown timer
+    printf "\b\b\b   \b\b"
+    for (( c=1; c<=$cooldown; c++ )); do
+      printf "\b/"; sleep .1
+      printf "\b-"; sleep .1
+      printf "\b\\"; sleep .1
+      printf "\b|"; sleep .1
+    done
+    printf "\bOK! "
+  else
+    if [ "$existing" == "1" ]; then
+      if [ "$loglevel" -ge "2" ]; then
+        log 2 "EXISTS $host/$path$ext "
+      else
+        printf " "
+      fi
+      # Add to watchdog counter
+      wdcounter=$(cat $tempdir/watchdog.tmp)
+      wdcounter=$(expr $wdcounter \+ 1)
+      echo $wdcounter >$tempdir/watchdog.tmp
+    fi
+    if [ ! "$existing" == "1" ]; then
+      log 2 "- Error processing file or retrieved file not found."
+      if [ "$dummies" == "1" ]; then
+        log 3 "- Creating dummy file ./sites/$host/$path$ext"
+        touch ./sites/$host/$path$ext 2>&1
+      fi
+    fi
+  fi
+
+  # Scan links only if file is larger than 64 bytes. Anything less and it's probably a dummy file or something else.
+  if [[ ! -z $(find ./sites/$host/$path$ext -type f -size +64c 2>/dev/null) ]]; then
     # Scan links on only specific filetypes
     if [[ "$path$ext" == *.html || "$path$ext" == *.htm || "$path$ext" == *.asp || "$path$ext" == *.shtml ]]; then
+      if [[ $debug == 1 ]] || [[ $debug == 2 ]]; then verbose="--verbose"; else verbose="--noverbose"; fi
       if [ "$path" == "" ]; then
-        ./getrel.sh $host/`basename $path$ext` $d --noverbose $pl $tempdir $logfile $startpath # --noverbose or --verbose
+        ./getrel.sh $host/`basename $path$ext` $d $verbose $pl $tempdir $logfile $startpath # --noverbose or --verbose enabled by "debug" var
       else
-        ./getrel.sh $host/$path$ext $d --noverbose $pl $tempdir $logfile $startpath # --noverbose or --verbose
+        ./getrel.sh $host/$path$ext $d $verbose $pl $tempdir $logfile $startpath # --noverbose or --verbose enabled by "debug" var
       fi
     fi
+  fi
 fi
 
 # RUN ONLY WHEN LAST PROCESS EXITS
