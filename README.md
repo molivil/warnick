@@ -1,4 +1,4 @@
-# WARNICK v1.4.4
+# WARNICK v1.5.0
 Web-site mirroring tool for archive.org
 
 Developed by Oliver Molini for ProtoWeb.org
@@ -61,4 +61,4 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
 
 ## Known bugs
-Some links are not parsed properly. This happens with non-standard links with spaces in odd places. This issue will be fixed in the next version.
+- Some links may be rarely left out due to their references being non-case sensitive. This most commonly happens when original websites were Windows-based, and less commonly with websites with lax redirection rules. An example is when downloading www.geocities.com/Area51/1000/, where the website refers to /area51/main.html, and the actual directory where the file resides, is /Area51/main.html. The script would make a case-sensitive comparison to see if the directory is the same or not, and rule out /area51/main.html, because it sees it as a different directory. From the point of view of Geocities.com, the directories Area51 and area51 are one and the same (aliased). 
