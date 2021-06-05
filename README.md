@@ -1,4 +1,4 @@
-# WARNICK v1.4.3
+# WARNICK v1.4.4
 Web-site mirroring tool for archive.org
 
 Developed by Oliver Molini for ProtoWeb.org
@@ -61,5 +61,4 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
 
 ## Known bugs
-Occasionally Warnick tends to get stuck in an infinite loop with a website. If you run into this bug, as a workaround, you can either use it on subdirectories of the site, until the culprit is found, or use a smaller maxdepth value. 
-
+Some links are not parsed properly. This happens with non-standard links with spaces in odd places, such as <a href = link.html>. This issue will be fixed in the next version.
