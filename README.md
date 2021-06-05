@@ -61,7 +61,7 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
 
 # Changelog
-## 1.5.0
+## 1.5.0 (2021-06-04)
 ### Changes
 - Rewrote the link parser script so Warnick can more readily parse non-standard HTML tags such as &lt;A Href &nbsp;= &nbsp;link.html &nbsp;&gt;
 ### Known bugs
