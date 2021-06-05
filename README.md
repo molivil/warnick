@@ -65,21 +65,21 @@ If you specify a maxdepth, you must also specify an owner. Owner must always be 
 ### Changes
 - Rewrote the link parser script so Warnick can more readily parse non-standard HTML tags such as &lt;A Href &nbsp;= &nbsp;link.html &nbsp;&gt;
 ### Known bugs
-- Some links may be rarely left out due to their references being non-case sensitive. This most commonly happens when original websites were Windows-based, and less commonly with websites with lax redirection rules. An example is when downloading www.geocities.com/Area51/1000/, where the website refers to /area51/main.html, and the actual directory where the file resides, is /Area51/main.html. The script would make a case-sensitive comparison to see if the directory is the same or not, and rule out /area51/main.html, because it sees it as a different directory. From the point of view of Geocities.com, the directories Area51 and area51 are one and the same (aliased). 
+- Some links may be rarely left out due to their references being non-case sensitive. See v1.4.2 for more details.
 
 ## 1.4.4 (2021-05-29)
 ### Changes
 - Added watchdog code to prevent infinite loops. Fixes the infinite loop problem.
 ### Known bugs
 - Some links do not parse properly when a page uses non-standard HTML tags.
+- Some links may be rarely left out due to their references being non-case sensitive. See v1.4.2 for more details.
 
 ## 1.4.3 (2021-04-30)
 ### Changes
 - Improved code efficiency.
 - Improved the way Warnick detects odd filenames, so that it won't get hung up when there are non-standard HTML tags, and try downloading something like ALIGN=MIDDLE. With some changes the parser script now makes a better attempt at detecting and ignoring links that clearly are not real files.
 ### Known bugs
-- Occasionally Warnick tends to get stuck in an infinite loop with a website. If you run into this bug, as a workaround, you can either use it on subdirectories of the site, until the culprit is found, or use a smaller maxdepth value. 
-- Some links do not parse properly when a page uses non-standard HTML tags.
+- Same as 1.4.2
 
 ## 1.4.2
 ### Changes
@@ -89,3 +89,4 @@ If you specify a maxdepth, you must also specify an owner. Owner must always be 
 ### Known bugs
 - Occasionally Warnick tends to get stuck in an infinite loop with a website. If you run into this bug, as a workaround, you can either use it on subdirectories of the site, until the culprit is found, or use a smaller maxdepth value. 
 - Some links do not parse properly when a page uses non-standard HTML tags.
+- Some links may be rarely left out due to their references being non-case sensitive. This most commonly happens when original websites were Windows-based, and less commonly with websites with lax redirection rules. An example is when downloading www.geocities.com/Area51/1000/, where the website refers to /area51/main.html, and the actual directory where the file resides, is /Area51/main.html. The script would make a case-sensitive comparison to see if the directory is the same or not, and rule out /area51/main.html, because it sees it as a different directory. From the point of view of Geocities.com, the directories Area51 and area51 are one and the same (aliased). 
