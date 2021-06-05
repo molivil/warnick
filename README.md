@@ -61,4 +61,4 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
 
 ## Known bugs
-Some links are not parsed properly. This happens with non-standard links with spaces in odd places, such as <a href = link.html>. This issue will be fixed in the next version.
+Some links are not parsed properly. This happens with non-standard links with spaces in odd places. This issue will be fixed in the next version.
