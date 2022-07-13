@@ -1,23 +1,35 @@
-# WARNICK v1.5.0
-Web-site mirroring tool for archive.org
+# WARNICK v2.0.5
+WARNICK Web-site mirroring tool for The Internet Archive (archive.org)
 
-Developed by Oliver Molini for ProtoWeb.org
-Some portions based on warrick.pl by Frank McCown at Old Dominion University
+Developed by Oliver Molini for Protoweb.org 2011-2022
+Inspired by warrick.pl by Frank McCown at Old Dominion University 2005-2010
+
+This program mirrors a specified domain from the Internet Archive's
+Wayback Machine using a specified target date.
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
 ## Installation
-### Script prerequisites
-- bash, tee, cut, grep, cat, md5sum, date
-- wget, curl
-- perl
-- RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
+### SCRIPT PREREQUISITE PROGRAMS:
+- bash 5.0.3 or newer
+- tee, cut, grep, cat, date
+- wget 1.20.1 or newer
+- curl 7.64.0 or newer
+
+### OTHER PREREQUISITES:
+- In Debian GNU/Linux, RuntimeDirectorySize directive in /etc/systemd/logind.conf set to 50% or more
+- If you have a different Linux distribution, or you don't have this file, check with your local distribution's manual how to increase the runtime directory size (/var/run).
 
 ### Mirror from Github
-- Have get.sh and getrel.sh mirrored into an empty directory.
-- Make a writable subdirectory called "sites".
+- Copy warnick.sh from Github to an empty directory.
+- Make a subdirectory called "sites" (mkdir sites)
+- Make both directories writable (chmod 770 -R ./)
  
 ### Change in runtime requirements
 You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to.
@@ -26,20 +38,21 @@ This may or may not be enough for Warnick to create its temporary log files.
 A larger size may be needed for Warnick to run properly.
 
 You may use the software any way you would like, just know you do it at your own risk. 
+
 The developer and the project team members may not be held liable for any damages direct or indirect resulting from the use of this software.
 
 ## Usage
 ```
-$ get.sh <URL> [datestring] [owner] [maxdepth]
+$ warnick.sh <URL> [datestring] [maxdepth] [owner]
 ```
 ### Examples
 ```
-$ get.sh www.domain.com
-$ get.sh www.domain.com 1997 nobody 5
-$ get.sh www.domain.com/path/ 199704 nobody 5
-$ get.sh www.domain.com/path/file.html 19970411
+$ warnick.sh www.domain.com
+$ warnick.sh www.domain.com 1997
+$ warnick.sh www.domain.com 19970401
+$ warnick.sh www.domain.com 19970401 8
 ```
-The first command in the list above will mirror an entire site from archive.org (https://web.archive.org/web/1997/http://www.domain.com/), whereas the last one will mirror a specific file and use the datestring to target files that are close to the given date (19970411). The web site  will be stored under the subdirectory ./sites/www.domain.com"
+The first command in the list above will mirror an entire site from archive.org (https://web.archive.org/web/1997/http://www.domain.com/), whereas the last one will mirror a specific file and use the datestring to target files that are close to the given date (19970411). The web site will be stored under the subdirectory ./sites/www.domain.com". It will use the maximum link traversal depth of 8.
 
 ## Parameters explained
 ### &lt;URL&gt;
@@ -59,6 +72,10 @@ This sets the default maximum depth hardlimit, and will exit the subprocess once
 
 ## Important!
 If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
+
+## Other notes
+Previously (version 1.5.1 and older) you were able to mirror domains and subdirectories only. This feature has been discontinued on the newer 2.x.x version. I plan to add it to the 2.x.x branch at some point, but right now, if you need to mirror just a subdirectory, download Warnick 1.5.2, and run it with the following example arguments:
+$ get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
 ## 1.5.0 (2021-06-04)
