@@ -1,5 +1,5 @@
 # WARNICK v2.0.5
-WARNICK Web-site mirroring tool for The Internet Archive (archive.org)
+WARNICK Web-site mirroring tool for the Internet Archive (archive.org)
 
 Developed by Oliver Molini for Protoweb.org 2011-2022
 Inspired by warrick.pl by Frank McCown at Old Dominion University 2005-2010
