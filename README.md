@@ -2,6 +2,7 @@
 WARNICK Web-site mirroring tool for the Internet Archive (archive.org)
 
 Developed by Oliver Molini for Protoweb.org 2011-2022
+
 Inspired by warrick.pl by Frank McCown at Old Dominion University 2005-2010
 
 This program mirrors a specified domain from the Internet Archive's
@@ -17,6 +18,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ## Installation
 ### SCRIPT PREREQUISITE PROGRAMS:
+- Debian GNU/Linux, Ubuntu, Raspbian or similar.
 - bash 5.0.3 or newer
 - tee, cut, grep, cat, date
 - wget 1.20.1 or newer
@@ -29,7 +31,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ### Mirror from Github
 - Copy warnick.sh from Github to an empty directory.
 - Make a subdirectory called "sites" (mkdir sites)
-- Make both directories writable (chmod 770 -R ./)
+- Make both directories writable and script executable (chmod 770 -R ./)
  
 ### Change in runtime requirements
 You must edit /etc/systemd/logind.conf and change "RuntimeDirectorySize" directive to.
@@ -62,22 +64,55 @@ The "http://" -prefix is not required.
 ### [Datestring]
 Target a specific date. The targeted date will be used when discovering files from archive.org. Datestring must be given in YYYYMMDD or YYYYMM or YYYY format. You may omit the day or month and day.
 
-### [Owner]
-This sets the job owner for the script. Use "nobody" here at all times, unless the script is used as part of a web integration in a multiuser environment.
-
 ### [Maxdepth]
 Override the default maxdepth value specified with the $defaultmaxdepth environment variable. 
 
 This sets the default maximum depth hardlimit, and will exit the subprocess once the limit has been reached. If the site is large, do not use much more than 5 or 6 here, to prevent the script from entering seemingly neverending infinite loops. In many cases a page that is 5 links deep can be reached from a page that is at a shallower depth, unless the web site happens to be a portal, so it should be relatively safe to use a lower value here, such as 4 or 5.
 
-## Important!
-If you specify a maxdepth, you must also specify an owner. Owner must always be "nobody", or $defaultowner, unless used in a web integration with ProtoWeb.
+### [Owner]
+This sets the job owner for the script. Never use this parameter, unless the script is used as part of a web integration in a multiuser environment. Using this parameter modifies the behavior of the script, and may create files in unexpected places. So please, do not use this parameter. :)
 
 ## Other notes
-Previously (version 1.5.1 and older) you were able to mirror domains and subdirectories only. This feature has been discontinued on the newer 2.x.x version. I plan to add it to the 2.x.x branch at some point, but right now, if you need to mirror just a subdirectory, download Warnick 1.5.2, and run it with the following example arguments:
+Previously (version 1.5.1 and older) you were able to mirror specific subdirectories in IA as well. This feature has been discontinued on the newer 2.x.x version for now. I plan to add it to the 2.x.x branch at some point, but right now, if you need to mirror just a subdirectory, download Warnick 1.5.2, and run it with the following example arguments:
 $ get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
+## 2.0.5 (2022-07-12)
+### Changes
+- Usability improvements. 
+- Now creates ./sites folder if it doesn't already exist.
+### Bug fixes
+- Fixed various bugs
+
+## 2.0.4 (2022-07-11)
+### Bug fixes
+- Fixed various bugs when used as part of a multi-user environment in Protoweb
+
+## 2.0.3 (2022-07-10)
+### Changes
+- Optimized code
+- Removed unused functions
+- Re-added cancel-job functionality for use in web integrations.
+
+## 2.0.2 (2022-07-10)
+### Bug fixes
+- Fixed incorrect handling of weird filenames.
+
+## 2.0.1 (2022-07-10)
+### Changes
+- Added support for discarding weird file names and improved reporting on them.
+### Bug fixes
+- Fixed various bugs
+
+## 2.0.0 (2022-07-08)
+### Changes
+- Script rewrite. 
+- Complete overhaul on how links get scanned. Now using a completely different methodology to scan the site for links for a major improvement on the amount of results found.
+
+## 1.5.1 (2021-06-05)
+### Bug fixes
+- Fixed an issue where not all pages would be archived due to page links being case insensitive. Some servers were Windows servers, and file.html and File.html were actually the same file in servers such as this.
+
 ## 1.5.0 (2021-06-04)
 ### Changes
 - Rewrote the link parser script so Warnick can more readily parse non-standard HTML tags such as &lt;A Href &nbsp;= &nbsp;link.html &nbsp;&gt;
