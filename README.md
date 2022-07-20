@@ -1,4 +1,4 @@
-# WARNICK v2.0.5
+# WARNICK v2.0.6
 WARNICK Website recovery tool for the Internet Archive (archive.org)
 
 Developed by Oliver Molini for Protoweb.org 2011-2022
@@ -78,6 +78,12 @@ Previously (version 1.5.1 and older) you were able to mirror specific subdirecto
 $ get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
+## 2.0.6 (2022-07-20)
+### Changes
+- Improved link parser to be more robust at parsing links with broken or non-standard HTML code.
+### Bug fixes
+- Fixed bugs when downloading files with spaces or other special characters in filenames and a file operation would fail.
+
 ## 2.0.5 (2022-07-12)
 ### Changes
 - Usability improvements. 
