@@ -1,12 +1,13 @@
 # WARNICK v2.0.5
-WARNICK Web-site mirroring tool for the Internet Archive (archive.org)
+WARNICK Website recovery tool for the Internet Archive (archive.org)
 
 Developed by Oliver Molini for Protoweb.org 2011-2022
 
 Inspired by warrick.pl by Frank McCown at Old Dominion University 2005-2010
 
-This program mirrors a specified domain from the Internet Archive's
-Wayback Machine using a specified target date.
+This program will mirror a specified website domain from the Internet Archive's
+Wayback Machine using a specified target date. It can be used to recover websites
+or mirror websites so they can be worked on locally.
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
 For further licensing information, please visit.
