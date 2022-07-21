@@ -78,6 +78,10 @@ Previously (version 1.5.1 and older) you were able to mirror specific subdirecto
 $ get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
+## 2.0.7 (2022-07-20)
+### Bug fixes
+Fixed a bug that would kill the whole recovery process if no links are found on the page.
+
 ## 2.0.6 (2022-07-20)
 ### Changes
 - Improved link parser to be more robust at parsing links with broken or non-standard HTML code.
