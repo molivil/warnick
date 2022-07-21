@@ -6,7 +6,7 @@ Developed by Oliver Molini for Protoweb.org 2011-2022
 Inspired by warrick.pl by Frank McCown at Old Dominion University 2005-2010
 
 This program will mirror a specified website domain from the Internet Archive's
-Wayback Machine using a specified target date. It can be used to recover websites
+Wayback Machine using a specified target date. It can be used to recover entire websites, 
 or mirror websites so they can be worked on locally.
 
 Copyright (CC BY-NC-SA 4.0) Oliver Molini
