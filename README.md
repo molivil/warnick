@@ -1,4 +1,4 @@
-# WARNICK v2.0.6
+# WARNICK v2.0.7
 WARNICK Website recovery tool for the Internet Archive (archive.org)
 
 Developed by Oliver Molini for Protoweb.org 2011-2022
