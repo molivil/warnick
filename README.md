@@ -46,16 +46,16 @@ The developer and the project team members may not be held liable for any damage
 
 ## Usage
 ```
-$ warnick.sh <URL> [datestring] [maxdepth] [owner]
+$ ./warnick.sh <URL> [datestring] [maxdepth] [owner]
 ```
 ### Examples
 ```
-$ warnick.sh www.domain.com
-$ warnick.sh www.domain.com 1997
-$ warnick.sh www.domain.com 19970401
-$ warnick.sh www.domain.com 19970401 8
+$ ./warnick.sh www.domain.com
+$ ./warnick.sh www.domain.com 1997
+$ ./warnick.sh www.domain.com 19970401
+$ ./warnick.sh www.domain.com 19970401 8
 ```
-The first command in the list above will mirror an entire site from archive.org (https://web.archive.org/web/1997/http://www.domain.com/), whereas the last one will mirror a specific file and use the datestring to target files that are close to the given date (19970411). The web site will be stored under the subdirectory ./sites/www.domain.com". It will use the maximum link traversal depth of 8.
+The first command in the list above will mirror an entire site from archive.org (https://web.archive.org/web/1997/http://www.domain.com/), whereas the last one will mirror a specific file and use the datestring to target files that are close to the given date (19970411). The web site will be stored under the subdirectory ./sites/www.domain.com".  It will use the maximum link traversal depth of 10 (or whatever you specify, usually 10 is recommended). 
 
 ## Parameters explained
 ### &lt;URL&gt;
@@ -75,7 +75,7 @@ This sets the job owner for the script. Never use this parameter, unless the scr
 
 ## Other notes
 Previously (version 1.5.1 and older) you were able to mirror specific subdirectories in IA as well. This feature has been discontinued on the newer 2.x.x version for now. I plan to add it to the 2.x.x branch at some point, but right now, if you need to mirror just a subdirectory, download Warnick 1.5.2, and run it with the following example arguments:
-$ get.sh www.domain.com/path/file.html 19970411 
+$ ./get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
 ## 2.0.7 (2022-07-20)
