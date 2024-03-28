@@ -78,6 +78,30 @@ Previously (version 1.5.1 and older) you were able to mirror specific subdirecto
 $ ./get.sh www.domain.com/path/file.html 19970411 
 
 # Changelog
+## 2.1.4 (2022-11-15)
+### Changes
+- Combined "skipping link to other host" log entries into a single-line log entry to reduce log spamming.
+### Bug fixes
+- Removed 2.1.2, it was causing issues. Instead, added more robust checking of downloaded files so that they do not end up overwriting files that were downloaded earlier. Although the link list can usually mitigate downloading the same files over and over again, it will not eliminate the problem, for example, the same file can be referred to as /dir/index.html and /dir/.
+
+## 2.1.3 (2022-11-12)
+### Bug fixes
+- Kept the format of the log file header the same when using debug mode, assisting usage with the development portal on Protoweb. It does not affect functionality when Warnick is used in console.
+
+## 2.1.2 (2022-11-12)
+### Bug fixes
+- Fixed a bug that allowed the main homepage of a domain to be downloaded twice by error. Added additional handling for IA HTTP status codes to account for connection throttling.
+
+## 2.1.1 (2022-11-12)
+### Bug fixes
+- Fixed a bug in link parsing where a link such as "calling.gif"ALT would be decoded as calling.gifALT. Now quotes are parsed properly.
+
+## 2.1.0 (2022-11-11)
+### Changes
+- Added variables for the user to customize the search range, which was previously hard-coded.
+### Bug fixes
+- Made redirection handling more robust. The previous version of Warnick contained a bug that would skip target date search when the file to be downloaded was a directory. This version follows the redirect, and looks at the MIME type of the downloaded file before determining if a file is within target date range.
+
 ## 2.0.7 (2022-07-20)
 ### Bug fixes
 - Fixed a bug that would kill the whole recovery process if no links are found on the page.
