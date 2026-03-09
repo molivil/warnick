@@ -39,7 +39,6 @@
 #
 # SCRIPT PREREQUISITE PROGRAMS:
 # - bash (tested on version 5.0.3)
-# - wget (1.20.1 or newer)
 # - curl (7.64.0 or newer)
 # - tee, cut, grep, head, cat, date, tr
 #
@@ -126,7 +125,7 @@
 # -----------------------------------------------------------------------------
 #
 # Script version number
-export version="2.1.4"
+export version="2.1.4-2"
 
 #
 # This variable sets the default maximum depth hardlimit, and will not scan
@@ -202,6 +201,8 @@ defaultowner=nobody
 # Download images from anywhere if necessary.
 export subdirsonly=1
 
+declare -A seenlinks
+
 function log {
   if [ "$loglevel" -ge "$1" ]; then
     if [ ! -z $depth ]; then
@@ -239,6 +240,10 @@ function scanlinks {
     return;
   fi
 
+  local LC_ALL=C
+  local filecontent
+  filecontent=$(<"$fn")
+
   # Reset vars
   otherhostlinks=
   newlinksfound=0
@@ -246,12 +251,9 @@ function scanlinks {
 
   while IFS= read -u 4 -r line; do
     byteoffset=$(echo $line |cut -d ':' -f1)
-    bytestart=$(expr $byteoffset \+ 1)
-    byteend=$(expr $byteoffset \+ $searchbuffer)
 
-    tag=$(cut -zb$bytestart-$byteend "$fn" |tr -d '\0' |tr '\n' ' ' |cut -d'>' -f1)">"       # <A HReF = "./case32.html?hello&world" name="test">
-    # replace newlines with spaces.
-    tag=$(echo -n "$tag" |tr '\n\r' ' ')
+    tag="${filecontent:$byteoffset:$searchbuffer}"
+    tag=$(echo -n "$tag" |tr '\n\r' ' ' |cut -d'>' -f1)">"
     # get offset of link parameter href, src... etc. add tag parameters here.
     log 4 "Debug: Tag found $tag"
     # if multiple matches, pick first one (head -n1)
@@ -371,11 +373,12 @@ function scanlinks {
 
       if [[ "$skiplink" == "0" ]]; then
         # Add link to list if it's valid and not already on the list
-        if [[ $(cat $linkfile |cut -d',' -f2 |grep "^${directlink}$") ]]; then
+        if [[ -n "${seenlinks[$directlink]}" ]]; then
           log 3 "Debug: Skipping link $directlink, already on the list."
         else
           log 3 "Debug: Adding link $directlink" #>> $linkfile
           echo "$depth,$directlink,/$path$filename" >> $linkfile
+          seenlinks["$directlink"]=1
           ((newlinksfound++))
         fi
       fi
@@ -396,129 +399,133 @@ function geturl {
   # Set archive URL here
   archurl="https://web.archive.org/web/${datestring}id_/http://$link"
   log 3 "Debug: Trying $archurl"
-  # Get status code for next page to be archived.
-  sleep $cooldown
-  archresponse="$(curl -sI "$archurl" | tr -d '\r')" # tr is needed, as text parsing doesn't play well with odd characters
-  archstatus="$(echo -n "$archresponse" |head -n1 |cut -d' ' -f2)"
-  archmime="$(echo -n "$archresponse" |grep "content-type: " |cut -d' ' -f2 |cut -d';' -f1)"
+
+  local headertmp="$tempdir/hdr-$$"
+  local filetmp="$tempdir/dl-$$"
+  local curlmeta=
+  archfounddate=
+  archmime=
+  downloadedfile=
+
+  curlmeta=$(curl -sSL \
+    --keepalive --keepalive-time 60 \
+    --tcp-fastopen \
+    --max-redirs 8 \
+    --dump-header "$headertmp" \
+    -o "$filetmp" \
+    --connect-timeout 30 \
+    --max-time 180 \
+    --retry 3 --retry-delay 10 --retry-connrefused \
+    --write-out "%{http_code}|%{url_effective}" \
+    "$archurl" 2>&1)
+
+  archstatus=$(echo "$curlmeta" |cut -d'|' -f1)
+  effectiveurl=$(echo "$curlmeta" |cut -d'|' -f2)
+
+  if [[ -f "$headertmp" ]]; then
+    archfounddate=$(grep -i "x-archive-redirect-reason: found" "$headertmp" \
+      |tail -n1 |tr -d '\r' |rev |cut -d' ' -f1 |rev)
+    archfounddate="${archfounddate:0:14}"
+    archmime=$(grep -i "^content-type: " "$headertmp" \
+      |tail -n1 |tr -d '\r' |cut -d' ' -f2 |cut -d';' -f1)
+  fi
+
   log 3 "$link HTTP status code: $archstatus"
   log 3 "$link HTTP content-type: $archmime"
-
-  # 302 Page redirect
-  if [[ $archstatus == "302" ]]; then
-    # Redirect page - follow redirect and try getting header information again
-    archurl=$(echo -n "$archresponse" |grep -m1 "location: " |cut -s -d' ' -f2)
-    archfounddate="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)"
-    archfounddate="${archfounddate:0:14}"
-
-    counter=0
-    while [ $counter -le 3 ]; do
-      log 2 "$link 302 - Following redirect: ${archurl}"
-      sleep $cooldown
-      archresponse="$(curl -sI "$archurl" | tr -d '\r')" # tr is needed, as text parsing doesn't play well with odd characters
-      archstatus="$(echo -n "$archresponse" |head -n1 |cut -d' ' -f2)"
-      if [[ $archstatus == "302" ]]; then 
-        archfounddate="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)"
-        archfounddate="${archfounddate:0:14}"
-        log 3 "$link 302 - Resource found on a different date ($archfounddate)"
-        archredirectreason="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: ")"
-        log 3 "$link 302 - $archredirectreason"
-        archurl=$(echo -n "$archresponse" |grep -m1 "location: " |cut -s -d' ' -f2)
-      else
-        log 3 "$link 302 - Ending redirect loop, encountered HTTP status code: $archstatus"
-        break
-      fi
-      ((counter++))
-    done
-
-
-    altfound=0
-    if [[ $archstatus == "200" ]]; then
-      archmime="$(echo -n "$archresponse" |grep "content-type: " |cut -d' ' -f2 |cut -d';' -f1)"
-      log 3 "$link 302 - HTTP content-type: $archmime"
-      if [[ $archmime == "text/html" ]]; then
-        # File is an HTML document. Only download if it is at or near target date.
-        minyear=$(expr ${datestring:0:4} - ${searchback})   # 2000 - 4 = 1996
-        maxyear=$(expr ${datestring:0:4} + ${searchahead})  # 2000 + 3 = 2003
-        if [[ "${archfounddate:0:4}" -ge $minyear ]] && [[ "${archfounddate:0:4}" -le $maxyear ]]; then
-          # Alternative within target search date
-          altfound=1
-        else
-          # Alternative not within target search date
-          archstatus="404"
-        fi
-      else
-        # File is NOT an HTML document. Expand search parameters.
-        log 3 "$link 302 - Alternative file is not an HTML document. Since it will not be parsed, can safely download alternative."
-        altfound=1
-      fi
-      if [[ "$altfound" == "1" ]]; then
-        log 2 "$link Alternative copy was found that is within target search range (datecode: ${archfounddate:0:8})"
-      else
-        log 1 "$link No resource found near target date. (${archfounddate:0:8})"
-      fi
-    else
-      # For some reason the redirected URL given from archive.org lead to a page with a status code that is not 200.
-      # I don't know why that would happen, so log this as an error.
-      if [[ ! $archstatus == "404" ]]; then
-        log 1 "IA responded with an unexpected HTTP status code: $archstatus"
-      fi
-    fi
+  if [[ ! -z "$archfounddate" ]]; then
+    log 3 "$link Redirect resolved to datecode: $archfounddate"
   fi
 
   # 403 Forbidden
-  if [[ $archstatus == "403" ]]; then   # Forbidden
+  if [[ $archstatus == "403" ]]; then
     log 1 "$link Warning: IA responded with HTTP status code: 403 - Forbidden"
   fi
 
-  # 404 Not Found
-  if [[ $archstatus == "404" ]]; then    # Not found
-    log 1 "$link 404 - Not Found.";
-  fi
-
   # 502 Bad Gateway
-  if [[ $archstatus == "502" ]]; then   # Bad Gateway
+  if [[ $archstatus == "502" ]]; then
     log 1 "$link Warning: IA responded with HTTP status code: 502 - Bad Gateway"
   fi
 
   if [[ $archstatus == "403" ]] || [[ $archstatus == "502" ]]; then
     log 1 "Warning: Encountered a status code, that could indicate server throttling. Cooling down for 30 seconds."
+    rm -f "$headertmp" "$filetmp"
     sleep 30
+    return
+  fi
+
+  altfound=0
+  if [[ ! -z "$archfounddate" ]]; then
+    if [[ $archmime == "text/html" ]]; then
+      # File is an HTML document. Only download if it is at or near target date.
+      minyear=$(( ${datestring:0:4} - searchback ))   # 2000 - 4 = 1996
+      maxyear=$(( ${datestring:0:4} + searchahead ))  # 2000 + 3 = 2003
+      if [[ "${archfounddate:0:4}" -ge $minyear ]] && [[ "${archfounddate:0:4}" -le $maxyear ]]; then
+        # Alternative within target search date
+        altfound=1
+      else
+        # Alternative not within target search date
+        archstatus="404"
+      fi
+    else
+      # File is NOT an HTML document. Expand search parameters.
+      log 3 "$link 302 - Alternative file is not an HTML document. Since it will not be parsed, can safely download alternative."
+      altfound=1
+    fi
+    if [[ "$altfound" == "1" ]]; then
+      log 2 "$link Alternative copy was found that is within target search range (datecode: ${archfounddate:0:8})"
+    else
+      log 1 "$link No resource found near target date. (${archfounddate:0:8})"
+    fi
+  fi
+
+  # 404 Not Found
+  if [[ $archstatus == "404" ]]; then
+    log 1 "$link 404 - Not Found.";
+    rm -f "$headertmp" "$filetmp"
+    return
   fi
 
   # 200 Page found and archived
   if [[ $archstatus == "200" ]]; then
     log 3 "$link 200 - Page found!"
-    sleep $cooldown
-    wget --quiet --max-redirect=0 -e robots=off -nH -nc -P $tempdir/web "$archurl" 2>&1 |tee -a $logfile
+
+    # Try to recover filename from the effective URL if it wasn't in the original.
+    if [[ -z "$filename" ]] && [[ -f "$filetmp" ]]; then
+      local realpath=$(echo "$effectiveurl" \
+        |sed 's|https://web\.archive\.org/web/[^/]*/http[s]*://[^/]*/||')
+      local inferredname=$(echo "$realpath" |rev |cut -s -d'/' -f1 |cut -s -d'.' -f1- |rev)
+      if [[ ! -z "$inferredname" ]]; then
+        filename="$inferredname"
+        log 3 "$link Inferred filename from effective URL: $filename"
+      else
+        local cdisp=$(grep -i "^content-disposition:" "$headertmp" \
+          |tail -n1 |tr -d '\r' |grep -oi 'filename=[^;[:space:]]*' \
+          |cut -d'=' -f2 |tr -d '"')
+        if [[ ! -z "$cdisp" ]]; then
+          filename="$cdisp"
+          log 3 "$link Inferred filename from Content-Disposition: $filename"
+        fi
+      fi
+    fi
+
+    downloadedfile="$filetmp"
+    log 3 "Successfully downloaded $filetmp !"
   fi
 
-  # Check to see if wget created the directory ./sites/$host/web
-  if [ -d "$tempdir/web" ]; then
-    # if /web -directory found, assume the file is there, find the file and 
-    # save full path to file in the variable $outputfile
-    downloadedfile=$(find $tempdir/web -type f)
-    log 3 "Successfully downloaded $downloadedfile !"
-    filename="$(echo -n $downloadedfile | rev | cut -d'/' -f1 | rev)"
-  else
-    # Otherwise clear $downloadedfile
-    downloadedfile=
-  fi
+  rm -f "$headertmp"
 
   # If a file was downloaded
-  if [ -f "$downloadedfile" ]; then
-    # Create path for downloaded file
-    # URL decode "my%20dir/" into "my dir/"
+  if [[ -f "$downloadedfile" ]]; then
     pathdecoded=$(urldecode "$path")
 
     # Move downloaded file to destination directory if it doesn't exist.
-    if [ -f "./sites/$host/$pathdecoded$filename" ]; then
-      #log 2 "Notice: Skipping downloaded file $directlink, file is already downloaded."
+    if [[ -f "./sites/$host/$pathdecoded$filename" ]]; then
       log 1 "$host/$path$filename Skipping document, destination already exists.    "
+      rm -f "$downloadedfile"
       downloadedfile=
     else
       mkdir -p "./sites/$host/$pathdecoded" 2>&1 |tee -a $logfile
-      mv -n "$downloadedfile" "./sites/$host/$pathdecoded" 2>&1 |tee -a $logfile # move wget'ed file out of ./web
+      mv -n "$downloadedfile" "./sites/$host/$pathdecoded/$filename" 2>&1 |tee -a $logfile
       if [[ -z "$archfounddate" ]]; then
         log 1 "$host/$path$filename OK!"
       elif [[ "${archfounddate:0:8}" == "${datestring:0:8}" ]]; then
@@ -526,9 +533,8 @@ function geturl {
       else
         log 1 "$host/$path$filename [alternate date: ${archfounddate:0:8}] OK!"
       fi
+      downloadedfile="./sites/$host/$pathdecoded/$filename"   # update path to final location
     fi
-
-    rm -r $tempdir/web 2>&1 |tee -a $logfile                     # remove ./web
 
     # Place cursor to be positioned correctly for the cooldown timer.
     printf "\b\b\b   \b\b"
@@ -648,6 +654,7 @@ mkdir -p ./sites
 # Add first link to link list
 touch $linkfile
 echo "$depth,$host/$startpath" >> $linkfile
+seenlinks["$host/$startpath"]=1
 
 while IFS="" read -r line || [ -n "$line" ]; do
   # Main loop - start with $startpath, then discover links as we go
@@ -693,7 +700,9 @@ while IFS="" read -r line || [ -n "$line" ]; do
       fi
     fi
   fi
-  linktotal=$(cat $linkfile |wc -l)
+  if [[ $newlinksfound -gt 0 ]]; then
+    linktotal=$(wc -l < $linkfile)
+  fi
 done < $linkfile
 
 # Job finished.
