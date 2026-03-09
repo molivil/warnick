@@ -669,11 +669,11 @@ while IFS="" read -r line || [ -n "$line" ]; do
                                                                            # Use tr to remove special characters, such as linefeeds.
   # Parse given URL to components
   # take last component of URL and get filename if exists
-  filename=$(echo "$link" |rev |cut -s -d'/' -f1 |cut -s -d'.' -f1- |rev)  # file.html
+  LC_ALL=C filename=$(echo "$link" |rev |cut -s -d'/' -f1 |cut -s -d'.' -f1- |rev)  # file.html
   if [[ -z $filename ]]; then
     path=$(echo "$link" |cut -s -d'/' -f2-)                                # path/to
   else
-    path=$(echo "$link" |rev |cut -s -d'/' -f2- |rev |cut -s -d'/' -f2-)   # path/to
+    LC_ALL=C path=$(echo "$link" |rev |cut -s -d'/' -f2- |rev |cut -s -d'/' -f2-)   # path/to
   fi
 
   if [[ ! -z "$path" ]] && [[ ! ${path: -1} == "/" ]]; then
