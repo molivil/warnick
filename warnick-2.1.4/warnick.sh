@@ -126,7 +126,7 @@
 # -----------------------------------------------------------------------------
 #
 # Script version number
-export version="2.1.4-2"
+export version="2.1.4-3"
 
 #
 # This variable sets the default maximum depth hardlimit, and will not scan
@@ -234,7 +234,7 @@ function scanlinks {
 
   # ---------------------- PARSE LINKS ------------------------
   searchbuffer=1024
-  linkscan=$(grep -obia "$fn" -e "<a\|<img\|<body\|<script\|<frame") # add tags to detect
+  linkscan=$(grep -obia "$fn" -e "<a\|<img\|<body\|<script\|<frame\|<meta") # add tags to detect
   if [[ -z $linkscan ]]; then
     # No links in file. Exit.
     log 2 "Debug: No links detected in file $fn"
@@ -258,7 +258,9 @@ function scanlinks {
     # get offset of link parameter href, src... etc. add tag parameters here.
     log 4 "Debug: Tag found $tag"
     # if multiple matches, pick first one (head -n1)
-    linkoffset="$(echo -n "$tag" |grep -obi "href\|src\|background" |cut -d':' -f1 |head -n1)"
+    linkoffsetattr="$(echo -n "$tag" |grep -obi "href\|src\|background\|content" |head -n1)"
+    linkoffset="${linkoffsetattr%%:*}"
+    linkattr="${linkoffsetattr##*:}"
 
     if [[ ! -z $linkoffset ]]; then
       # link found!
@@ -273,6 +275,15 @@ function scanlinks {
       # Check if link starts in quotes. If so, then grab link inside quotes
       if [[ $link == \"* ]]; then link="${link#\"}"; link="${link%%\"*}"; fi # ./dir\case32.html#anchor
       log 4 "Debug: Link parsed step 2: $link"
+
+      iscontentnourl=0
+      if [[ "${linkattr,,}" == "content" ]]; then
+        if [[ "${link,,}" == *"url="* ]]; then
+          tmp="${link,,}"; tmp="${tmp%%url=*}"; link="${link:${#tmp}}"; link="${link#*=}"
+        else
+          iscontentnourl=1
+        fi
+      fi
 
       # step 3 - remove spaces and quotes and anything else that we missed
       link="${link//\"/}"; link="${link%% *}"                                  # ./dir\case32.html#anchor
@@ -331,6 +342,7 @@ function scanlinks {
 
       # Check for skip conditions
       skiplink=0   # Reset skiplink
+      if [[ "$iscontentnourl" == "1" ]]; then skiplink=1; fi
 
       # Empty link - could not decode link
       if [[ -z "$directlink" ]]; then
@@ -692,7 +704,7 @@ while IFS="" read -r line || [ -n "$line" ]; do
   # If a file was downloaded, only scan links if we are not beyond maxdepth...
   if [[ ! -z "$downloadedfile" && "$depth" -lt "$maxdepth" ]]; then
     # and only on specific filetypes...
-    if [[ "$filename" == *.html || "$filename" == *.htm || "$filename" == *.asp || "$filename" == *.shtml || "$filename" == *.php || "$filename" == *.cgi ]]; then
+    if [[ "$filename" == *.html || "$filename" == *.htm || "$filename" == *.asp || "$filename" == *.shtml || "$filename" == *.php || "$filename" == *.cgi || "$filename" == *.jsp || "$filename" == *.php3 || "$filename" == *.aspx ]]; then
       # and only if the file actually exists.
       if [[ -f "./sites/$host/$path$filename" ]]; then
         scanlinks "./sites/$host/$path$filename"
