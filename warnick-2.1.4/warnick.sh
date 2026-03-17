@@ -420,8 +420,8 @@ function geturl {
   log 3 "$link HTTP status code: $archstatus"
   log 3 "$link HTTP content-type: $archmime"
 
-  # 302 Page redirect
-  if [[ $archstatus == "302" ]]; then
+  # 301/302 Page redirect
+  if [[ $archstatus == "301" ]] || [[ $archstatus == "302" ]]; then
     # Redirect page - follow redirect and try getting header information again
     archurl=$(echo -n "$archresponse" |grep -m1 "location: " |cut -s -d' ' -f2)
     archfounddate="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)"
@@ -429,19 +429,19 @@ function geturl {
 
     counter=0
     while [ $counter -le 3 ]; do
-      log 2 "$link 302 - Following redirect: ${archurl}"
+      log 2 "$link $archstatus - Following redirect: ${archurl}"
       sleep $cooldown
       archresponse="$(curl -sI "$archurl" | tr -d '\r')" # tr is needed, as text parsing doesn't play well with odd characters
       archstatus="$(echo -n "$archresponse" |head -n1 |cut -d' ' -f2)"
-      if [[ $archstatus == "302" ]]; then 
+      if [[ $archstatus == "301" ]] || [[ $archstatus == "302" ]]; then
         archfounddate="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: found" |rev |cut -d' ' -f1 |rev)"
         archfounddate="${archfounddate:0:14}"
-        log 3 "$link 302 - Resource found on a different date ($archfounddate)"
+        log 3 "$link $archstatus - Resource found on a different date ($archfounddate)"
         archredirectreason="$(echo -n "$archresponse" |grep "x-archive-redirect-reason: ")"
-        log 3 "$link 302 - $archredirectreason"
+        log 3 "$link $archstatus - $archredirectreason"
         archurl=$(echo -n "$archresponse" |grep -m1 "location: " |cut -s -d' ' -f2)
       else
-        log 3 "$link 302 - Ending redirect loop, encountered HTTP status code: $archstatus"
+        log 3 "$link $archstatus - Ending redirect loop, encountered HTTP status code: $archstatus"
         break
       fi
       ((counter++))
@@ -451,7 +451,7 @@ function geturl {
     altfound=0
     if [[ $archstatus == "200" ]]; then
       archmime="$(echo -n "$archresponse" |grep "content-type: " |cut -d' ' -f2 |cut -d';' -f1)"
-      log 3 "$link 302 - HTTP content-type: $archmime"
+      log 3 "$link $archstatus - HTTP content-type: $archmime"
       if [[ $archmime == "text/html" ]]; then
         # File is an HTML document. Only download if it is at or near target date.
         minyear=$(expr ${datestring:0:4} - ${searchback})   # 2000 - 4 = 1996
@@ -465,7 +465,7 @@ function geturl {
         fi
       else
         # File is NOT an HTML document. Expand search parameters.
-        log 3 "$link 302 - Alternative file is not an HTML document. Since it will not be parsed, can safely download alternative."
+        log 3 "$link $archstatus - Alternative file is not an HTML document. Since it will not be parsed, can safely download alternative."
         altfound=1
       fi
       if [[ "$altfound" == "1" ]]; then
